@@ -13,6 +13,8 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.util.StringUtils;
+import jakarta.annotation.PostConstruct;
 
 import static org.springframework.security.config.Customizer.withDefaults;
 
@@ -21,17 +23,25 @@ import static org.springframework.security.config.Customizer.withDefaults;
 @EnableMethodSecurity
 public class SecurityConfig {
     
-    @Value("${app.security.admin.username:admin}")
+    @Value("${app.security.admin.username}")
     private String adminUsername;
-    
-    @Value("${app.security.admin.password:admin123}")
+
+    @Value("${app.security.admin.password}")
     private String adminPassword;
-    
-    @Value("${app.security.user.username:user}")
+
+    @Value("${app.security.user.username}")
     private String userUsername;
-    
-    @Value("${app.security.user.password:user123}")
+
+    @Value("${app.security.user.password}")
     private String userPassword;
+
+    @PostConstruct
+    void validateCredentialProperties() {
+        if (!StringUtils.hasText(adminUsername) || !StringUtils.hasText(adminPassword)
+            || !StringUtils.hasText(userUsername) || !StringUtils.hasText(userPassword)) {
+            throw new IllegalStateException("Security credentials are not configured properly");
+        }
+    }
     
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
