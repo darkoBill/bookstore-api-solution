@@ -5,7 +5,6 @@ import jakarta.validation.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.*;
 import org.springframework.security.access.AccessDeniedException;
-import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -13,13 +12,15 @@ import org.springframework.web.context.request.WebRequest;
 
 import java.net.URI;
 import java.time.Instant;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.ArrayList;
+import java.util.List;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
     
     private static final String PROBLEM_BASE_URL = "https://bookstore-api.example.com/problems";
+
+    public record ValidationError(String field, String message) {}
     
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<ProblemDetail> handleResourceNotFound(
@@ -89,12 +90,10 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ProblemDetail> handleValidationExceptions(
             MethodArgumentNotValidException ex, WebRequest request) {
         
-        Map<String, String> errors = new HashMap<>();
-        ex.getBindingResult().getAllErrors().forEach(error -> {
-            String fieldName = ((FieldError) error).getField();
-            String errorMessage = error.getDefaultMessage();
-            errors.put(fieldName, errorMessage);
-        });
+        List<ValidationError> errors = new ArrayList<>();
+        ex.getBindingResult().getFieldErrors().forEach(error ->
+            errors.add(new ValidationError(error.getField(), error.getDefaultMessage()))
+        );
         
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(
             HttpStatus.BAD_REQUEST, "Validation failed");
@@ -112,11 +111,11 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ProblemDetail> handleConstraintViolationExceptions(
             ConstraintViolationException ex, WebRequest request) {
         
-        Map<String, String> errors = new HashMap<>();
+        List<ValidationError> errors = new ArrayList<>();
         for (ConstraintViolation<?> violation : ex.getConstraintViolations()) {
             String fieldName = violation.getPropertyPath().toString();
             String errorMessage = violation.getMessage();
-            errors.put(fieldName, errorMessage);
+            errors.add(new ValidationError(fieldName, errorMessage));
         }
         
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(
