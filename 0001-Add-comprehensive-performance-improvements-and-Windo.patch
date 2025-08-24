@@ -1,0 +1,518 @@
+From a88f09c53d0033cc2ed7196859091d0c2ff82460 Mon Sep 17 00:00:00 2001
+From: Darko <darko@example.com>
+Date: Sun, 24 Aug 2025 14:38:20 +0200
+Subject: [PATCH] Add comprehensive performance improvements and Windows
+ support
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+- Enhanced BookRepository with N+1 query optimization using @EntityGraph
+- Added batch processing methods to NamedEntityRepository for efficient lookups
+- Refactored BookServiceImpl to use batch operations for author/genre processing
+- Added BookConcurrentUpdateTest to verify thread safety under concurrent operations
+- Included Windows PowerShell scripts for cross-platform development support
+- Updated README with Windows development instructions
+- Fixed unit test mocks to work with new batch processing approach
+---
+ README.md                                     | 53 +++++++++++
+ scripts/run-local.ps1                         | 44 +++++++++
+ scripts/smoke.ps1                             | 16 ++++
+ .../repository/AuthorRepository.java          |  4 -
+ .../bookstore/repository/BookRepository.java  |  9 +-
+ .../bookstore/repository/GenreRepository.java |  4 -
+ .../repository/NamedEntityRepository.java     |  6 ++
+ .../service/impl/BookServiceImpl.java         | 79 ++++++++++-----
+ .../integration/BookConcurrentUpdateTest.java | 95 +++++++++++++++++++
+ .../unit/service/BookServiceImplTest.java     |  8 +-
+ 10 files changed, 281 insertions(+), 37 deletions(-)
+ create mode 100644 scripts/run-local.ps1
+ create mode 100644 scripts/smoke.ps1
+ create mode 100644 src/test/java/com/bookstore/integration/BookConcurrentUpdateTest.java
+
+diff --git a/README.md b/README.md
+index c3561ef..cf1e3fc 100644
+--- a/README.md
++++ b/README.md
+@@ -61,6 +61,7 @@ Many-to-many relationships between Books, Authors, and Genres via join tables. T
+ ### Prerequisites
+ - Java 21 LTS
+ - Docker & Docker Compose
++- Windows: PowerShell 5+ or Windows Subsystem for Linux (WSL2)
+ 
+ ### Deployment Options
+ 
+@@ -85,6 +86,25 @@ docker compose up --build
+ open http://localhost:8080/swagger-ui.html
+ ```
+ 
++```powershell
++# PowerShell (Windows)
++cd bookstore-api
++
++# Set required environment variables
++$env:DB_USERNAME="bookstore"
++$env:DB_PASSWORD="bookstore123"
++$env:ADMIN_USERNAME="admin"
++$env:ADMIN_PASSWORD="admin123"
++$env:USER_USERNAME="user"
++$env:USER_PASSWORD="user123"
++
++# Start everything with Docker Compose
++docker compose up --build
++
++# Access API documentation
++Start-Process http://localhost:8080/swagger-ui.html
++```
++
+ #### Option 2: Local Development (Host + Container DB)
+ Run application on host machine with PostgreSQL in Docker for faster development cycles:
+ ```bash
+@@ -109,6 +129,29 @@ export USER_PASSWORD=user123
+ ./scripts/stop-local.sh
+ ```
+ 
++```powershell
++# PowerShell (Windows)
++# Start PostgreSQL database only
++docker compose -f docker-compose.dev.yml up -d postgres
++
++# Set required environment variables
++$env:DB_USERNAME="bookstore"
++$env:DB_PASSWORD="bookstore123"
++$env:ADMIN_USERNAME="admin"
++$env:ADMIN_PASSWORD="admin123"
++$env:USER_USERNAME="user"
++$env:USER_PASSWORD="user123"
++
++# Run application locally using convenience script
++.\scripts\run-local.ps1
++
++# Or manually with Gradle
++.\gradlew.bat bootRun --args="--spring.profiles.active=local"
++
++# Stop database when done
++docker compose -f docker-compose.dev.yml down
++```
++
+ **Note:** All security credentials must be provided via environment variables. The application will fail to start if any required credentials are missing.
+ 
+ ### Environment Profiles
+@@ -132,6 +175,16 @@ export USER_PASSWORD=user123
+ ./scripts/smoke.sh
+ ```
+ 
++```powershell
++# PowerShell (Windows)
++.\gradlew.bat test
++.\gradlew.bat test jacocoTestReport
++.\gradlew.bat test --tests "*.unit.*"
++.\gradlew.bat test --tests "*.integration.*"
++# smoke.ps1 requires bash (WSL or Git Bash)
++.\scripts\smoke.ps1
++```
++
+ ## API Usage
+ 
+ ### Base Configuration
+diff --git a/scripts/run-local.ps1 b/scripts/run-local.ps1
+new file mode 100644
+index 0000000..90378cc
+--- /dev/null
++++ b/scripts/run-local.ps1
+@@ -0,0 +1,44 @@
++#!/usr/bin/env pwsh
++# Bookstore API - Local Development Runner (PowerShell)
++# This script starts the application for local development on Windows
++
++Set-StrictMode -Version Latest
++$ErrorActionPreference = "Stop"
++
++Write-Host "Starting Bookstore API in local development mode..."
++
++# Check if Docker is running
++try {
++    docker info | Out-Null
++} catch {
++    Write-Error "ERROR: Docker is not running. Please start Docker and try again."
++    exit 1
++}
++
++Write-Host "Starting PostgreSQL database..."
++docker compose -f docker-compose.dev.yml up -d postgres | Out-Null
++
++Write-Host "Waiting for PostgreSQL to be ready..."
++$timeout = 60
++$counter = 0
++while (-not (docker exec bookstore-postgres-dev pg_isready -U bookstore -d bookstore > $null 2>&1)) {
++    if ($counter -ge $timeout) {
++        Write-Error "ERROR: PostgreSQL failed to start within $timeout seconds"
++        exit 1
++    }
++    Write-Host "   Waiting for PostgreSQL... ($counter/$timeout)"
++    Start-Sleep -Seconds 2
++    $counter += 2
++}
++
++Write-Host "PostgreSQL is ready!"
++
++Write-Host "Starting Spring Boot application locally..."
++Write-Host "Application will be available at: http://localhost:8080"
++Write-Host "API Documentation: http://localhost:8080/swagger-ui.html"
++Write-Host "Default credentials: admin / admin123"
++Write-Host ""
++Write-Host "Press Ctrl+C to stop the application"
++Write-Host ""
++
++./gradlew.bat bootRun --args='--spring.profiles.active=local'
+\ No newline at end of file
+diff --git a/scripts/smoke.ps1 b/scripts/smoke.ps1
+new file mode 100644
+index 0000000..b30912e
+--- /dev/null
++++ b/scripts/smoke.ps1
+@@ -0,0 +1,16 @@
++#!/usr/bin/env pwsh
++# PowerShell wrapper for smoke tests
++# Requires bash via WSL or Git Bash
++
++Set-StrictMode -Version Latest
++$ErrorActionPreference = "Stop"
++
++$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
++$smokeScript = Join-Path $scriptDir "smoke.sh"
++
++if (Get-Command bash -ErrorAction SilentlyContinue) {
++    bash $smokeScript @args
++} else {
++    Write-Error "bash not found. Install WSL or Git Bash to run smoke tests."
++    exit 1
++}
+\ No newline at end of file
+diff --git a/src/main/java/com/bookstore/repository/AuthorRepository.java b/src/main/java/com/bookstore/repository/AuthorRepository.java
+index 5fdf6ff..656eb3f 100644
+--- a/src/main/java/com/bookstore/repository/AuthorRepository.java
++++ b/src/main/java/com/bookstore/repository/AuthorRepository.java
+@@ -2,11 +2,7 @@ package com.bookstore.repository;
+ 
+ import com.bookstore.domain.Author;
+ import org.springframework.stereotype.Repository;
+-import java.util.Set;
+-import java.util.UUID;
+ 
+ @Repository
+ public interface AuthorRepository extends NamedEntityRepository<Author> {
+-    
+-    Set<Author> findByIdIn(Set<UUID> ids);
+ }
+\ No newline at end of file
+diff --git a/src/main/java/com/bookstore/repository/BookRepository.java b/src/main/java/com/bookstore/repository/BookRepository.java
+index fba8b75..09ec6c9 100644
+--- a/src/main/java/com/bookstore/repository/BookRepository.java
++++ b/src/main/java/com/bookstore/repository/BookRepository.java
+@@ -1,6 +1,10 @@
+ package com.bookstore.repository;
+ 
+ import com.bookstore.domain.Book;
++import org.springframework.data.domain.Page;
++import org.springframework.data.domain.Pageable;
++import org.springframework.data.jpa.domain.Specification;
++import org.springframework.data.jpa.repository.EntityGraph;
+ import org.springframework.data.jpa.repository.JpaRepository;
+ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+ import org.springframework.data.jpa.repository.Query;
+@@ -17,6 +21,9 @@ public interface BookRepository extends JpaRepository<Book, UUID>, JpaSpecificat
+            "LEFT JOIN FETCH b.genres " +
+            "WHERE b.id = :id")
+     Optional<Book> findByIdWithRelations(UUID id);
+-    
++
+     Optional<Book> findByIsbn(String isbn);
++
++    @EntityGraph(attributePaths = {"authors", "genres"})
++    Page<Book> findAll(Specification<Book> spec, Pageable pageable);
+ }
+\ No newline at end of file
+diff --git a/src/main/java/com/bookstore/repository/GenreRepository.java b/src/main/java/com/bookstore/repository/GenreRepository.java
+index d35bb82..fa98cbf 100644
+--- a/src/main/java/com/bookstore/repository/GenreRepository.java
++++ b/src/main/java/com/bookstore/repository/GenreRepository.java
+@@ -2,11 +2,7 @@ package com.bookstore.repository;
+ 
+ import com.bookstore.domain.Genre;
+ import org.springframework.stereotype.Repository;
+-import java.util.Set;
+-import java.util.UUID;
+ 
+ @Repository
+ public interface GenreRepository extends NamedEntityRepository<Genre> {
+-    
+-    Set<Genre> findByIdIn(Set<UUID> ids);
+ }
+\ No newline at end of file
+diff --git a/src/main/java/com/bookstore/repository/NamedEntityRepository.java b/src/main/java/com/bookstore/repository/NamedEntityRepository.java
+index 2363a33..df8631a 100644
+--- a/src/main/java/com/bookstore/repository/NamedEntityRepository.java
++++ b/src/main/java/com/bookstore/repository/NamedEntityRepository.java
+@@ -7,6 +7,7 @@ import org.springframework.data.repository.NoRepositoryBean;
+ import org.springframework.data.repository.query.Param;
+ 
+ import java.util.Optional;
++import java.util.Set;
+ import java.util.UUID;
+ 
+ @NoRepositoryBean
+@@ -14,4 +15,9 @@ public interface NamedEntityRepository<E extends NamedEntity> extends JpaReposit
+ 
+     @Query("SELECT e FROM #{#entityName} e WHERE LOWER(e.name) = LOWER(:name)")
+     Optional<E> findByNameIgnoreCase(@Param("name") String name);
++
++    Set<E> findByIdIn(Set<UUID> ids);
++
++    @Query("SELECT e FROM #{#entityName} e WHERE e.name IN :names")
++    Set<E> findByNameIgnoreCaseIn(@Param("names") Set<String> names);
+ }
+\ No newline at end of file
+diff --git a/src/main/java/com/bookstore/service/impl/BookServiceImpl.java b/src/main/java/com/bookstore/service/impl/BookServiceImpl.java
+index 5172263..590799d 100644
+--- a/src/main/java/com/bookstore/service/impl/BookServiceImpl.java
++++ b/src/main/java/com/bookstore/service/impl/BookServiceImpl.java
+@@ -24,6 +24,7 @@ import org.springframework.stereotype.Service;
+ import org.springframework.transaction.annotation.Transactional;
+ 
+ import java.util.HashSet;
++import java.util.Objects;
+ import java.util.Set;
+ import java.util.UUID;
+ import java.util.stream.Collectors;
+@@ -120,45 +121,75 @@ public class BookServiceImpl implements BookService {
+     
+     private Set<Author> processAuthors(Set<AuthorDto> authorDtos) {
+         Set<Author> authors = new HashSet<>();
+-        
+-        for (AuthorDto dto : authorDtos) {
+-            Author author;
+-            if (dto.id() != null) {
+-                author = authorRepository.findById(dto.id())
+-                    .orElseThrow(() -> new ResourceNotFoundException("Author", dto.id()));
+-            } else {
+-                author = authorRepository.findByNameIgnoreCase(dto.name())
++
++        // Batch fetch by IDs
++        Set<UUID> ids = authorDtos.stream()
++            .map(AuthorDto::id)
++            .filter(Objects::nonNull)
++            .collect(Collectors.toSet());
++
++        if (!ids.isEmpty()) {
++            Set<Author> foundAuthors = authorRepository.findByIdIn(ids);
++            if (foundAuthors.size() != ids.size()) {
++                Set<UUID> foundIds = foundAuthors.stream()
++                    .map(Author::getId)
++                    .collect(Collectors.toSet());
++                ids.removeAll(foundIds);
++                throw new ResourceNotFoundException("Author", ids.iterator().next());
++            }
++            authors.addAll(foundAuthors);
++        }
++
++        // Process authors without IDs (by name)
++        authorDtos.stream()
++            .filter(dto -> dto.id() == null)
++            .forEach(dto -> {
++                Author author = authorRepository.findByNameIgnoreCase(dto.name())
+                     .orElseGet(() -> {
+                         Author newAuthor = new Author();
+                         newAuthor.setName(dto.name());
+                         return authorRepository.save(newAuthor);
+                     });
+-            }
+-            authors.add(author);
+-        }
+-        
++                authors.add(author);
++            });
++
+         return authors;
+     }
+     
+     private Set<Genre> processGenres(Set<GenreDto> genreDtos) {
+         Set<Genre> genres = new HashSet<>();
+-        
+-        for (GenreDto dto : genreDtos) {
+-            Genre genre;
+-            if (dto.id() != null) {
+-                genre = genreRepository.findById(dto.id())
+-                    .orElseThrow(() -> new ResourceNotFoundException("Genre", dto.id()));
+-            } else {
+-                genre = genreRepository.findByNameIgnoreCase(dto.name())
++
++        // Batch fetch by IDs
++        Set<UUID> ids = genreDtos.stream()
++            .map(GenreDto::id)
++            .filter(Objects::nonNull)
++            .collect(Collectors.toSet());
++
++        if (!ids.isEmpty()) {
++            Set<Genre> foundGenres = genreRepository.findByIdIn(ids);
++            if (foundGenres.size() != ids.size()) {
++                Set<UUID> foundIds = foundGenres.stream()
++                    .map(Genre::getId)
++                    .collect(Collectors.toSet());
++                ids.removeAll(foundIds);
++                throw new ResourceNotFoundException("Genre", ids.iterator().next());
++            }
++            genres.addAll(foundGenres);
++        }
++
++        // Process genres without IDs (by name)
++        genreDtos.stream()
++            .filter(dto -> dto.id() == null)
++            .forEach(dto -> {
++                Genre genre = genreRepository.findByNameIgnoreCase(dto.name())
+                     .orElseGet(() -> {
+                         Genre newGenre = new Genre();
+                         newGenre.setName(dto.name());
+                         return genreRepository.save(newGenre);
+                     });
+-            }
+-            genres.add(genre);
+-        }
+-        
++                genres.add(genre);
++            });
++
+         return genres;
+     }
+     
+diff --git a/src/test/java/com/bookstore/integration/BookConcurrentUpdateTest.java b/src/test/java/com/bookstore/integration/BookConcurrentUpdateTest.java
+new file mode 100644
+index 0000000..119d98f
+--- /dev/null
++++ b/src/test/java/com/bookstore/integration/BookConcurrentUpdateTest.java
+@@ -0,0 +1,95 @@
++package com.bookstore.integration;
++
++import com.bookstore.dto.BookDto;
++import com.bookstore.service.BookService;
++import org.junit.jupiter.api.Test;
++import org.springframework.beans.factory.annotation.Autowired;
++
++import java.math.BigDecimal;
++import java.util.List;
++import java.util.Set;
++import java.util.UUID;
++import java.util.concurrent.Callable;
++import java.util.concurrent.ExecutionException;
++import java.util.concurrent.ExecutorService;
++import java.util.concurrent.Executors;
++import java.util.concurrent.Future;
++import java.util.concurrent.TimeUnit;
++
++import static org.junit.jupiter.api.Assertions.*;
++
++class BookConcurrentUpdateTest extends BaseIntegrationTest {
++
++    @Autowired
++    private BookService bookService;
++
++    @Test
++    void concurrentUpdatesShouldNotCauseDuplicatesOrLostUpdates() throws Exception {
++        BookDto initial = new BookDto(
++            null,
++            "Concurrent Book",
++            new BigDecimal("10.00"),
++            2024,
++            "CONCUR-ISBN",
++            Set.of(),
++            Set.of(),
++            null,
++            null
++        );
++
++        BookDto created = bookService.createBook(initial);
++        UUID bookId = created.id();
++
++        Callable<Void> task1 = () -> {
++            BookDto update1 = new BookDto(
++                bookId,
++                "Title A",
++                new BigDecimal("20.00"),
++                2024,
++                "CONCUR-ISBN",
++                Set.of(),
++                Set.of(),
++                null,
++                null
++            );
++            bookService.updateBook(bookId, update1);
++            return null;
++        };
++
++        Callable<Void> task2 = () -> {
++            BookDto update2 = new BookDto(
++                bookId,
++                "Title B",
++                new BigDecimal("30.00"),
++                2024,
++                "CONCUR-ISBN",
++                Set.of(),
++                Set.of(),
++                null,
++                null
++            );
++            bookService.updateBook(bookId, update2);
++            return null;
++        };
++
++        ExecutorService executor = Executors.newFixedThreadPool(2);
++        List<Future<Void>> futures = executor.invokeAll(List.of(task1, task2));
++        executor.shutdown();
++        executor.awaitTermination(5, TimeUnit.SECONDS);
++
++        for (Future<Void> future : futures) {
++            try {
++                future.get();
++            } catch (ExecutionException e) {
++                fail("Unexpected exception during concurrent update", e.getCause());
++            }
++        }
++
++        BookDto result = bookService.getBook(bookId);
++
++        boolean firstUpdate = result.title().equals("Title A") && result.price().compareTo(new BigDecimal("20.00")) == 0;
++        boolean secondUpdate = result.title().equals("Title B") && result.price().compareTo(new BigDecimal("30.00")) == 0;
++
++        assertTrue(firstUpdate || secondUpdate, "Final state should match one of concurrent updates");
++    }
++}
+\ No newline at end of file
+diff --git a/src/test/java/com/bookstore/unit/service/BookServiceImplTest.java b/src/test/java/com/bookstore/unit/service/BookServiceImplTest.java
+index ec61998..29d9a00 100644
+--- a/src/test/java/com/bookstore/unit/service/BookServiceImplTest.java
++++ b/src/test/java/com/bookstore/unit/service/BookServiceImplTest.java
+@@ -104,8 +104,8 @@ class BookServiceImplTest {
+     @Test
+     void createBook_ShouldCreateSuccessfully() {
+         when(bookMapper.toEntity(bookDto)).thenReturn(book);
+-        when(authorRepository.findById(any())).thenReturn(Optional.of(author));
+-        when(genreRepository.findById(any())).thenReturn(Optional.of(genre));
++        when(authorRepository.findByIdIn(any())).thenReturn(Set.of(author));
++        when(genreRepository.findByIdIn(any())).thenReturn(Set.of(genre));
+         when(bookRepository.save(any())).thenReturn(book);
+         when(bookMapper.toDto(book)).thenReturn(bookDto);
+         
+@@ -156,8 +156,8 @@ class BookServiceImplTest {
+     @Test
+     void updateBook_ShouldUpdateSuccessfully() {
+         when(bookRepository.findById(bookId)).thenReturn(Optional.of(book));
+-        when(authorRepository.findById(any())).thenReturn(Optional.of(author));
+-        when(genreRepository.findById(any())).thenReturn(Optional.of(genre));
++        when(authorRepository.findByIdIn(any())).thenReturn(Set.of(author));
++        when(genreRepository.findByIdIn(any())).thenReturn(Set.of(genre));
+         when(bookRepository.save(any())).thenReturn(book);
+         when(bookMapper.toDto(book)).thenReturn(bookDto);
+         
+-- 
+2.43.0
+

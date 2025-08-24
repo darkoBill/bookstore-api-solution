@@ -7,6 +7,7 @@ import org.springframework.data.repository.NoRepositoryBean;
 import org.springframework.data.repository.query.Param;
 
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 @NoRepositoryBean
@@ -14,4 +15,9 @@ public interface NamedEntityRepository<E extends NamedEntity> extends JpaReposit
 
     @Query("SELECT e FROM #{#entityName} e WHERE LOWER(e.name) = LOWER(:name)")
     Optional<E> findByNameIgnoreCase(@Param("name") String name);
+
+    Set<E> findByIdIn(Set<UUID> ids);
+
+    @Query("SELECT e FROM #{#entityName} e WHERE e.name IN :names")
+    Set<E> findByNameIgnoreCaseIn(@Param("names") Set<String> names);
 }

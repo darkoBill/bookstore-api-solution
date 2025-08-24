@@ -104,8 +104,8 @@ class BookServiceImplTest {
     @Test
     void createBook_ShouldCreateSuccessfully() {
         when(bookMapper.toEntity(bookDto)).thenReturn(book);
-        when(authorRepository.findById(any())).thenReturn(Optional.of(author));
-        when(genreRepository.findById(any())).thenReturn(Optional.of(genre));
+        when(authorRepository.findByIdIn(any())).thenReturn(Set.of(author));
+        when(genreRepository.findByIdIn(any())).thenReturn(Set.of(genre));
         when(bookRepository.save(any())).thenReturn(book);
         when(bookMapper.toDto(book)).thenReturn(bookDto);
         
@@ -156,8 +156,8 @@ class BookServiceImplTest {
     @Test
     void updateBook_ShouldUpdateSuccessfully() {
         when(bookRepository.findById(bookId)).thenReturn(Optional.of(book));
-        when(authorRepository.findById(any())).thenReturn(Optional.of(author));
-        when(genreRepository.findById(any())).thenReturn(Optional.of(genre));
+        when(authorRepository.findByIdIn(any())).thenReturn(Set.of(author));
+        when(genreRepository.findByIdIn(any())).thenReturn(Set.of(genre));
         when(bookRepository.save(any())).thenReturn(book);
         when(bookMapper.toDto(book)).thenReturn(bookDto);
         

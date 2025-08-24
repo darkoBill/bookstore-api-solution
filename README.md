@@ -61,6 +61,7 @@ Many-to-many relationships between Books, Authors, and Genres via join tables. T
 ### Prerequisites
 - Java 21 LTS
 - Docker & Docker Compose
+- Windows: PowerShell 5+ or Windows Subsystem for Linux (WSL2)
 
 ### Deployment Options
 
@@ -83,6 +84,25 @@ docker compose up --build
 
 # Access API documentation
 open http://localhost:8080/swagger-ui.html
+```
+
+```powershell
+# PowerShell (Windows)
+cd bookstore-api
+
+# Set required environment variables
+$env:DB_USERNAME="bookstore"
+$env:DB_PASSWORD="bookstore123"
+$env:ADMIN_USERNAME="admin"
+$env:ADMIN_PASSWORD="admin123"
+$env:USER_USERNAME="user"
+$env:USER_PASSWORD="user123"
+
+# Start everything with Docker Compose
+docker compose up --build
+
+# Access API documentation
+Start-Process http://localhost:8080/swagger-ui.html
 ```
 
 #### Option 2: Local Development (Host + Container DB)
@@ -109,6 +129,29 @@ export USER_PASSWORD=user123
 ./scripts/stop-local.sh
 ```
 
+```powershell
+# PowerShell (Windows)
+# Start PostgreSQL database only
+docker compose -f docker-compose.dev.yml up -d postgres
+
+# Set required environment variables
+$env:DB_USERNAME="bookstore"
+$env:DB_PASSWORD="bookstore123"
+$env:ADMIN_USERNAME="admin"
+$env:ADMIN_PASSWORD="admin123"
+$env:USER_USERNAME="user"
+$env:USER_PASSWORD="user123"
+
+# Run application locally using convenience script
+.\scripts\run-local.ps1
+
+# Or manually with Gradle
+.\gradlew.bat bootRun --args="--spring.profiles.active=local"
+
+# Stop database when done
+docker compose -f docker-compose.dev.yml down
+```
+
 **Note:** All security credentials must be provided via environment variables. The application will fail to start if any required credentials are missing.
 
 ### Environment Profiles
@@ -130,6 +173,16 @@ export USER_PASSWORD=user123
 
 # Run smoke tests against running instance
 ./scripts/smoke.sh
+```
+
+```powershell
+# PowerShell (Windows)
+.\gradlew.bat test
+.\gradlew.bat test jacocoTestReport
+.\gradlew.bat test --tests "*.unit.*"
+.\gradlew.bat test --tests "*.integration.*"
+# smoke.ps1 requires bash (WSL or Git Bash)
+.\scripts\smoke.ps1
 ```
 
 ## API Usage

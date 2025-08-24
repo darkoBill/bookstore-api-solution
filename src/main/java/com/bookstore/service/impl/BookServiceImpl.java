@@ -24,6 +24,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashSet;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -120,45 +121,75 @@ public class BookServiceImpl implements BookService {
     
     private Set<Author> processAuthors(Set<AuthorDto> authorDtos) {
         Set<Author> authors = new HashSet<>();
-        
-        for (AuthorDto dto : authorDtos) {
-            Author author;
-            if (dto.id() != null) {
-                author = authorRepository.findById(dto.id())
-                    .orElseThrow(() -> new ResourceNotFoundException("Author", dto.id()));
-            } else {
-                author = authorRepository.findByNameIgnoreCase(dto.name())
+
+        // Batch fetch by IDs
+        Set<UUID> ids = authorDtos.stream()
+            .map(AuthorDto::id)
+            .filter(Objects::nonNull)
+            .collect(Collectors.toSet());
+
+        if (!ids.isEmpty()) {
+            Set<Author> foundAuthors = authorRepository.findByIdIn(ids);
+            if (foundAuthors.size() != ids.size()) {
+                Set<UUID> foundIds = foundAuthors.stream()
+                    .map(Author::getId)
+                    .collect(Collectors.toSet());
+                ids.removeAll(foundIds);
+                throw new ResourceNotFoundException("Author", ids.iterator().next());
+            }
+            authors.addAll(foundAuthors);
+        }
+
+        // Process authors without IDs (by name)
+        authorDtos.stream()
+            .filter(dto -> dto.id() == null)
+            .forEach(dto -> {
+                Author author = authorRepository.findByNameIgnoreCase(dto.name())
                     .orElseGet(() -> {
                         Author newAuthor = new Author();
                         newAuthor.setName(dto.name());
                         return authorRepository.save(newAuthor);
                     });
-            }
-            authors.add(author);
-        }
-        
+                authors.add(author);
+            });
+
         return authors;
     }
     
     private Set<Genre> processGenres(Set<GenreDto> genreDtos) {
         Set<Genre> genres = new HashSet<>();
-        
-        for (GenreDto dto : genreDtos) {
-            Genre genre;
-            if (dto.id() != null) {
-                genre = genreRepository.findById(dto.id())
-                    .orElseThrow(() -> new ResourceNotFoundException("Genre", dto.id()));
-            } else {
-                genre = genreRepository.findByNameIgnoreCase(dto.name())
+
+        // Batch fetch by IDs
+        Set<UUID> ids = genreDtos.stream()
+            .map(GenreDto::id)
+            .filter(Objects::nonNull)
+            .collect(Collectors.toSet());
+
+        if (!ids.isEmpty()) {
+            Set<Genre> foundGenres = genreRepository.findByIdIn(ids);
+            if (foundGenres.size() != ids.size()) {
+                Set<UUID> foundIds = foundGenres.stream()
+                    .map(Genre::getId)
+                    .collect(Collectors.toSet());
+                ids.removeAll(foundIds);
+                throw new ResourceNotFoundException("Genre", ids.iterator().next());
+            }
+            genres.addAll(foundGenres);
+        }
+
+        // Process genres without IDs (by name)
+        genreDtos.stream()
+            .filter(dto -> dto.id() == null)
+            .forEach(dto -> {
+                Genre genre = genreRepository.findByNameIgnoreCase(dto.name())
                     .orElseGet(() -> {
                         Genre newGenre = new Genre();
                         newGenre.setName(dto.name());
                         return genreRepository.save(newGenre);
                     });
-            }
-            genres.add(genre);
-        }
-        
+                genres.add(genre);
+            });
+
         return genres;
     }
     
