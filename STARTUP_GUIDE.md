@@ -34,17 +34,25 @@ This is the fastest way to get the complete system running:
 # 1. Navigate to project directory
 cd bookstore-api
 
-# 2. Start all services (API + PostgreSQL)
+# 2. Set required environment variables
+export DB_USERNAME=bookstore
+export DB_PASSWORD=bookstore123
+export ADMIN_USERNAME=admin
+export ADMIN_PASSWORD=admin123
+export USER_USERNAME=user
+export USER_PASSWORD=user123
+
+# 3. Start all services (API + PostgreSQL)
 docker compose up --build -d
 
-# 3. Wait for services to be ready (30-60 seconds)
+# 4. Wait for services to be ready (30-60 seconds)
 docker compose logs app --tail=20
 
-# 4. Verify API is healthy
+# 5. Verify API is healthy
 curl http://localhost:8080/actuator/health
 
-# 5. Access Swagger UI with authentication
-# Username: admin, Password: admin123
+# 6. Access Swagger UI with authentication
+# Use the credentials from environment variables
 open http://localhost:8080/swagger-ui.html
 ```
 
@@ -58,12 +66,22 @@ docker compose -f docker-compose.dev.yml up -d postgres
 # 2. Wait for database to be ready
 docker compose -f docker-compose.dev.yml logs postgres --tail=10
 
-# 3. Run application locally
+# 3. Set required environment variables
+export DB_USERNAME=bookstore
+export DB_PASSWORD=bookstore123
+export ADMIN_USERNAME=admin
+export ADMIN_PASSWORD=admin123
+export USER_USERNAME=user
+export USER_PASSWORD=user123
+
+# 4. Run application locally using convenience script
 ./scripts/run-local.sh
 
 # Or manually:
 ./gradlew bootRun --args='--spring.profiles.active=local'
 ```
+
+**Note:** All security credentials must be provided via environment variables. The application will fail to start if any required credentials are missing.
 
 ## Testing Strategy
 

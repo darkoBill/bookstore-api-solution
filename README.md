@@ -70,6 +70,14 @@ Complete containerized environment with application and database in Docker:
 # Clone and navigate to project
 cd bookstore-api
 
+# Set required environment variables
+export DB_USERNAME=bookstore
+export DB_PASSWORD=bookstore123
+export ADMIN_USERNAME=admin
+export ADMIN_PASSWORD=admin123
+export USER_USERNAME=user
+export USER_PASSWORD=user123
+
 # Start everything with Docker Compose
 docker compose up --build
 
@@ -83,6 +91,14 @@ Run application on host machine with PostgreSQL in Docker for faster development
 # Start PostgreSQL database only
 docker compose -f docker-compose.dev.yml up -d postgres
 
+# Set required environment variables
+export DB_USERNAME=bookstore
+export DB_PASSWORD=bookstore123
+export ADMIN_USERNAME=admin
+export ADMIN_PASSWORD=admin123
+export USER_USERNAME=user
+export USER_PASSWORD=user123
+
 # Run application locally using convenience script
 ./scripts/run-local.sh
 
@@ -92,6 +108,8 @@ docker compose -f docker-compose.dev.yml up -d postgres
 # Stop database when done
 ./scripts/stop-local.sh
 ```
+
+**Note:** All security credentials must be provided via environment variables. The application will fail to start if any required credentials are missing.
 
 ### Environment Profiles
 - `default`: Production configuration (requires external PostgreSQL)
@@ -123,11 +141,16 @@ docker compose -f docker-compose.dev.yml up -d postgres
 - **Health Check**: `/actuator/health`
 
 ### Authentication
+Authentication uses HTTP Basic Auth with credentials configured via environment variables:
 ```bash
 # Admin credentials (full CRUD access)
-curl -u admin:admin123 http://localhost:8080/api/books
+curl -u ${ADMIN_USERNAME}:${ADMIN_PASSWORD} http://localhost:8080/api/books
 
-# User credentials (read-only access)
+# User credentials (read-only access)  
+curl -u ${USER_USERNAME}:${USER_PASSWORD} http://localhost:8080/api/books
+
+# Default values (if environment variables are set as shown above):
+curl -u admin:admin123 http://localhost:8080/api/books
 curl -u user:user123 http://localhost:8080/api/books
 ```
 
