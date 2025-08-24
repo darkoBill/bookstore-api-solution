@@ -443,3 +443,8 @@ SPRING_PROFILES_ACTIVE=demo docker compose up
 - [ ] Review logs and metrics at actuator endpoints
 - [ ] Explore demo data with `SPRING_PROFILES_ACTIVE=demo`
 
+
+## License
+
+This project is licensed under the [Apache License 2.0](LICENSE).
+
