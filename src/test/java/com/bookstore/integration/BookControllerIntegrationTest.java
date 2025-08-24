@@ -8,6 +8,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
@@ -17,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 import static org.hamcrest.Matchers.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
@@ -107,10 +110,8 @@ class BookControllerIntegrationTest extends BaseIntegrationTest {
             .andExpect(status().isBadRequest())
             .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
             .andExpect(jsonPath("$.type").value(containsString("validation-error")))
-            .andExpect(jsonPath("$.errors").isMap())
-            .andExpect(jsonPath("$.errors.title").exists())
-            .andExpect(jsonPath("$.errors.price").exists())
-            .andExpect(jsonPath("$.errors.publishedYear").exists());
+            .andExpect(jsonPath("$.errors").isArray())
+            .andExpect(jsonPath("$.errors[*].field", hasItems("title", "price", "publishedYear")));
     }
     
     @Test
@@ -244,6 +245,30 @@ class BookControllerIntegrationTest extends BaseIntegrationTest {
                 .with(httpBasic("user", "user123"))
                 .param("size", "101"))
             .andExpect(status().isBadRequest());
+    }
+
+    @ParameterizedTest
+    @MethodSource("searchParamNames")
+    void searchBooks_WithMaxLengthFilters_ShouldReturn200(String paramName) throws Exception {
+        String value = "a".repeat(255);
+        mockMvc.perform(get("/api/books")
+                .with(httpBasic("user", "user123"))
+                .param(paramName, value))
+            .andExpect(status().isOk());
+    }
+
+    @ParameterizedTest
+    @MethodSource("searchParamNames")
+    void searchBooks_WithTooLongFilters_ShouldReturn400(String paramName) throws Exception {
+        String value = "a".repeat(256);
+        mockMvc.perform(get("/api/books")
+                .with(httpBasic("user", "user123"))
+                .param(paramName, value))
+            .andExpect(status().isBadRequest());
+    }
+
+    private static Stream<String> searchParamNames() {
+        return Stream.of("title", "author", "genre");
     }
     
     private BookDto createTestBook() throws Exception {

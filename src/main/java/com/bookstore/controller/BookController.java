@@ -11,6 +11,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Size;
 import org.springframework.validation.annotation.Validated;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -84,9 +85,9 @@ public class BookController {
     @PreAuthorize("hasAnyRole('ADMIN', 'USER')")
     @Operation(summary = "Search and list books")
     public ResponseEntity<ApiResponse<List<BookDto>>> searchBooks(
-            @RequestParam(required = false) String title,
-            @RequestParam(required = false) String author,
-            @RequestParam(required = false) String genre,
+            @RequestParam(required = false) @Size(max = 255) String title,
+            @RequestParam(required = false) @Size(max = 255) String author,
+            @RequestParam(required = false) @Size(max = 255) String genre,
             @RequestParam(defaultValue = "0") @Min(0) int page,
             @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size,
             @RequestParam(defaultValue = "title,asc") String sort) {
