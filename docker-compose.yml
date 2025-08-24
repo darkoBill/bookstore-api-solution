@@ -1,0 +1,49 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: bookstore-postgres
+    environment:
+      POSTGRES_DB: ${DB_NAME:-bookstore}
+      POSTGRES_USER: ${DB_USERNAME:-bookstore}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-bookstore}
+# Don't expose PostgreSQL port to avoid conflicts with host instances
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-bookstore}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build: .
+    container_name: bookstore-api
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/${DB_NAME:-bookstore}
+      DB_USERNAME: ${DB_USERNAME:-bookstore}
+      DB_PASSWORD: ${DB_PASSWORD:-bookstore}
+      DB_MAX_POOL_SIZE: ${DB_MAX_POOL_SIZE:-30}
+      DB_MIN_IDLE: ${DB_MIN_IDLE:-10}
+      SERVER_PORT: ${SERVER_PORT:-8080}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      APP_LOG_LEVEL: ${APP_LOG_LEVEL:-DEBUG}
+      SECURITY_LOG_LEVEL: ${SECURITY_LOG_LEVEL:-INFO}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin123}
+      USER_USERNAME: ${USER_USERNAME:-user}
+      USER_PASSWORD: ${USER_PASSWORD:-user123}
+      SWAGGER_ENABLED: ${SWAGGER_ENABLED:-true}
+    ports:
+      - "${SERVER_PORT:-8080}:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+volumes:
+  postgres_data:

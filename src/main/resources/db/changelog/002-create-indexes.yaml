@@ -1,0 +1,64 @@
+databaseChangeLog:
+  - changeSet:
+      id: 006-create-case-insensitive-unique-indexes
+      author: bookstore-api
+      changes:
+        - sql:
+            sql: CREATE UNIQUE INDEX uk_author_name_lower ON authors(LOWER(name))
+        - sql:
+            sql: CREATE UNIQUE INDEX uk_genre_name_lower ON genres(LOWER(name))
+        - sql:
+            sql: CREATE INDEX idx_book_title_search ON books(LOWER(title))
+        - sql:
+            sql: CREATE UNIQUE INDEX uk_book_isbn_notnull ON books(isbn) WHERE isbn IS NOT NULL
+      rollback:
+        - sql:
+            sql: DROP INDEX IF EXISTS uk_author_name_lower
+        - sql:
+            sql: DROP INDEX IF EXISTS uk_genre_name_lower
+        - sql:
+            sql: DROP INDEX IF EXISTS idx_book_title_search
+        - sql:
+            sql: DROP INDEX IF EXISTS uk_book_isbn_notnull
+
+  - changeSet:
+      id: 007-create-join-table-indexes
+      author: bookstore-api
+      changes:
+        - createIndex:
+            tableName: book_authors
+            indexName: idx_book_authors_book_id
+            columns:
+              - column:
+                  name: book_id
+        - createIndex:
+            tableName: book_authors
+            indexName: idx_book_authors_author_id
+            columns:
+              - column:
+                  name: author_id
+        - createIndex:
+            tableName: book_genres
+            indexName: idx_book_genres_book_id
+            columns:
+              - column:
+                  name: book_id
+        - createIndex:
+            tableName: book_genres
+            indexName: idx_book_genres_genre_id
+            columns:
+              - column:
+                  name: genre_id
+      rollback:
+        - dropIndex:
+            tableName: book_authors
+            indexName: idx_book_authors_book_id
+        - dropIndex:
+            tableName: book_authors
+            indexName: idx_book_authors_author_id
+        - dropIndex:
+            tableName: book_genres
+            indexName: idx_book_genres_book_id
+        - dropIndex:
+            tableName: book_genres
+            indexName: idx_book_genres_genre_id

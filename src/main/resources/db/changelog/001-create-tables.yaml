@@ -1,0 +1,183 @@
+databaseChangeLog:
+  - changeSet:
+      id: 001-create-authors-table
+      author: bookstore-api
+      changes:
+        - createTable:
+            tableName: authors
+            columns:
+              - column:
+                  name: id
+                  type: UUID
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropTable:
+            tableName: authors
+
+  - changeSet:
+      id: 002-create-genres-table
+      author: bookstore-api
+      changes:
+        - createTable:
+            tableName: genres
+            columns:
+              - column:
+                  name: id
+                  type: UUID
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: VARCHAR(100)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropTable:
+            tableName: genres
+
+  - changeSet:
+      id: 003-create-books-table
+      author: bookstore-api
+      changes:
+        - createTable:
+            tableName: books
+            columns:
+              - column:
+                  name: id
+                  type: UUID
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: title
+                  type: VARCHAR(500)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: price
+                  type: NUMERIC(12,2)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: published_year
+                  type: INTEGER
+              - column:
+                  name: isbn
+                  type: VARCHAR(20)
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropTable:
+            tableName: books
+
+  - changeSet:
+      id: 004-create-book-authors-join-table
+      author: bookstore-api
+      changes:
+        - createTable:
+            tableName: book_authors
+            columns:
+              - column:
+                  name: book_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+              - column:
+                  name: author_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+        - addPrimaryKey:
+            tableName: book_authors
+            columnNames: book_id, author_id
+        - addForeignKeyConstraint:
+            baseTableName: book_authors
+            baseColumnNames: book_id
+            referencedTableName: books
+            referencedColumnNames: id
+            constraintName: fk_book_authors_book
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: book_authors
+            baseColumnNames: author_id
+            referencedTableName: authors
+            referencedColumnNames: id
+            constraintName: fk_book_authors_author
+            onDelete: CASCADE
+      rollback:
+        - dropTable:
+            tableName: book_authors
+
+  - changeSet:
+      id: 005-create-book-genres-join-table
+      author: bookstore-api
+      changes:
+        - createTable:
+            tableName: book_genres
+            columns:
+              - column:
+                  name: book_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+              - column:
+                  name: genre_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+        - addPrimaryKey:
+            tableName: book_genres
+            columnNames: book_id, genre_id
+        - addForeignKeyConstraint:
+            baseTableName: book_genres
+            baseColumnNames: book_id
+            referencedTableName: books
+            referencedColumnNames: id
+            constraintName: fk_book_genres_book
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: book_genres
+            baseColumnNames: genre_id
+            referencedTableName: genres
+            referencedColumnNames: id
+            constraintName: fk_book_genres_genre
+            onDelete: CASCADE
+      rollback:
+        - dropTable:
+            tableName: book_genres
