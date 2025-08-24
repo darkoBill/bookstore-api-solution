@@ -28,6 +28,51 @@ public record BookDto(
     Set<AuthorDto> authors,
     Set<GenreDto> genres,
     
+    @PositiveOrZero(message = "Quantity in stock must be zero or positive")
+    Integer quantityInStock,
+    
+    @PositiveOrZero(message = "Reserved quantity must be zero or positive") 
+    Integer reservedQuantity,
+    
+    @PositiveOrZero(message = "Cost price must be zero or positive")
+    @Digits(integer = 10, fraction = 2, message = "Cost price format invalid")
+    BigDecimal costPrice,
+    
+    @Size(max = 500, message = "Supplier info must not exceed 500 characters")
+    String supplierInfo,
+    
+    @PositiveOrZero(message = "Reorder level must be zero or positive")
+    Integer reorderLevel,
+    
+    Long viewCount,
+    Long version,
+    
     Instant createdAt,
     Instant updatedAt
-) {}
+) {
+    // Computed properties for business logic
+    public Integer getAvailableQuantity() {
+        if (quantityInStock == null || reservedQuantity == null) {
+            return 0;
+        }
+        return Math.max(0, quantityInStock - reservedQuantity);
+    }
+    
+    public boolean isAvailable() {
+        return getAvailableQuantity() > 0;
+    }
+    
+    public boolean needsRestock() {
+        if (reorderLevel == null) {
+            return false;
+        }
+        return getAvailableQuantity() <= reorderLevel;
+    }
+    
+    public BigDecimal getMargin() {
+        if (costPrice == null || costPrice.compareTo(BigDecimal.ZERO) <= 0) {
+            return null;
+        }
+        return price.subtract(costPrice);
+    }
+}

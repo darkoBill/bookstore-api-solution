@@ -96,6 +96,13 @@ class BookServiceImplTest {
             "1234567890",
             Set.of(authorDto),
             Set.of(genreDto),
+            10,      // quantityInStock
+            0,       // reservedQuantity  
+            new BigDecimal("15.99"), // costPrice
+            "Test Supplier", // supplierInfo
+            5,       // reorderLevel
+            0L,      // viewCount
+            0L,      // version
             Instant.now(),
             Instant.now()
         );

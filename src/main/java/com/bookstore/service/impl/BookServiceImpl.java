@@ -22,6 +22,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import io.micrometer.core.annotation.Timed;
 
 import java.util.HashSet;
 import java.util.Objects;
@@ -42,6 +43,7 @@ public class BookServiceImpl implements BookService {
     
     @Override
     @Transactional
+    @Timed(value = "book.creation", description = "Time spent creating books")
     public BookDto createBook(BookDto bookDto) {
         validateIsbn(bookDto.isbn(), null);
         
@@ -64,9 +66,13 @@ public class BookServiceImpl implements BookService {
     }
     
     @Override
+    @Transactional
     public BookDto getBook(UUID id) {
         Book book = bookRepository.findByIdWithRelations(id)
             .orElseThrow(() -> new ResourceNotFoundException("Book", id));
+        
+        // Track view count for analytics
+        bookRepository.incrementViewCount(id);
         
         return bookMapper.toDto(book);
     }
@@ -104,13 +110,14 @@ public class BookServiceImpl implements BookService {
     @Override
     @Transactional
     public void deleteBook(UUID id) {
-        if (bookRepository.existsById(id)) {
-            bookRepository.deleteById(id);
+        long deletedCount = bookRepository.deleteBookById(id);
+        if (deletedCount > 0) {
             log.debug("Deleted book with id: {}", id);
         }
     }
     
     @Override
+    @Timed(value = "book.search", description = "Time spent searching books")
     public Page<BookDto> searchBooks(String title, String author, String genre, Pageable pageable) {
         Specification<Book> spec = BookSpecification.withFilters(title, author, genre);
         

@@ -1,6 +1,7 @@
 package com.bookstore.domain;
 
 import jakarta.persistence.*;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.SuperBuilder;
@@ -31,11 +32,17 @@ public abstract class BaseEntity {
     @Column(nullable = false)
     private Instant updatedAt;
     
+    @Version
+    @Column(nullable = false)
+    @Builder.Default
+    private Long version = 0L;
+    
     protected BaseEntity() {}
     
     protected BaseEntity(UUID id, Instant createdAt, Instant updatedAt) {
         this.id = id;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
+        this.version = 0L;
     }
 }

@@ -1,10 +1,13 @@
 package com.bookstore.exception;
 
+import jakarta.persistence.OptimisticLockException;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.*;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -130,6 +133,40 @@ public class GlobalExceptionHandler {
             .body(problem);
     }
     
+    @ExceptionHandler({OptimisticLockException.class, OptimisticLockingFailureException.class})
+    public ResponseEntity<ProblemDetail> handleOptimisticLockingFailure(
+            Exception ex, WebRequest request) {
+        
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+            HttpStatus.CONFLICT, "The resource was modified by another user. Please refresh and try again.");
+        problem.setType(URI.create(PROBLEM_BASE_URL + "/optimistic-lock-failure"));
+        problem.setTitle("Concurrent Modification Detected");
+        problem.setProperty("timestamp", Instant.now());
+        problem.setProperty("retryable", true);
+        
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+            .contentType(MediaType.APPLICATION_PROBLEM_JSON)
+            .body(problem);
+    }
+    
+    @ExceptionHandler(InsufficientInventoryException.class)
+    public ResponseEntity<ProblemDetail> handleInsufficientInventory(
+            InsufficientInventoryException ex, WebRequest request) {
+        
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+            HttpStatus.CONFLICT, ex.getMessage());
+        problem.setType(URI.create(PROBLEM_BASE_URL + "/insufficient-inventory"));
+        problem.setTitle("Insufficient Inventory");
+        problem.setProperty("timestamp", Instant.now());
+        problem.setProperty("bookId", ex.getBookId());
+        problem.setProperty("requestedQuantity", ex.getRequestedQuantity());
+        problem.setProperty("availableQuantity", ex.getAvailableQuantity());
+        
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+            .contentType(MediaType.APPLICATION_PROBLEM_JSON)
+            .body(problem);
+    }
+    
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ProblemDetail> handleDataIntegrityViolation(
             DataIntegrityViolationException ex, WebRequest request) {
@@ -161,6 +198,21 @@ public class GlobalExceptionHandler {
         problem.setProperty("timestamp", Instant.now());
         
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
+            .contentType(MediaType.APPLICATION_PROBLEM_JSON)
+            .body(problem);
+    }
+    
+    @ExceptionHandler(BadCredentialsException.class)
+    public ResponseEntity<ProblemDetail> handleBadCredentials(
+            BadCredentialsException ex, WebRequest request) {
+        
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+            HttpStatus.UNAUTHORIZED, "Invalid credentials");
+        problem.setType(URI.create(PROBLEM_BASE_URL + "/bad-credentials"));
+        problem.setTitle("Authentication Failed");
+        problem.setProperty("timestamp", Instant.now());
+        
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
             .contentType(MediaType.APPLICATION_PROBLEM_JSON)
             .body(problem);
     }

@@ -1,0 +1,103 @@
+databaseChangeLog:
+  - changeSet:
+      id: 008-add-inventory-fields
+      author: bookstore-api
+      changes:
+        - addColumn:
+            tableName: books
+            columns:
+              - column:
+                  name: quantity_in_stock
+                  type: INTEGER
+                  defaultValue: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: reserved_quantity
+                  type: INTEGER
+                  defaultValue: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: cost_price
+                  type: DECIMAL(12,2)
+              - column:
+                  name: supplier_info
+                  type: VARCHAR(500)
+              - column:
+                  name: reorder_level
+                  type: INTEGER
+                  defaultValue: 5
+              - column:
+                  name: view_count
+                  type: BIGINT
+                  defaultValue: 0
+                  constraints:
+                    nullable: false
+        - addColumn:
+            tableName: books
+            columns:
+              - column:
+                  name: version
+                  type: BIGINT
+                  defaultValue: 0
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropColumn:
+            tableName: books
+            columnName: quantity_in_stock
+        - dropColumn:
+            tableName: books
+            columnName: reserved_quantity
+        - dropColumn:
+            tableName: books
+            columnName: cost_price
+        - dropColumn:
+            tableName: books
+            columnName: supplier_info
+        - dropColumn:
+            tableName: books
+            columnName: reorder_level
+        - dropColumn:
+            tableName: books
+            columnName: view_count
+        - dropColumn:
+            tableName: books
+            columnName: version
+
+  - changeSet:
+      id: 009-add-inventory-indexes
+      author: bookstore-api
+      changes:
+        - createIndex:
+            tableName: books
+            indexName: idx_book_available_quantity
+            columns:
+              - column:
+                  name: quantity_in_stock
+              - column:
+                  name: reserved_quantity
+        - createIndex:
+            tableName: books
+            indexName: idx_book_view_count
+            columns:
+              - column:
+                  name: view_count
+                  descending: true
+        - createIndex:
+            tableName: books
+            indexName: idx_book_reorder_level
+            columns:
+              - column:
+                  name: reorder_level
+      rollback:
+        - dropIndex:
+            tableName: books
+            indexName: idx_book_available_quantity
+        - dropIndex:
+            tableName: books
+            indexName: idx_book_view_count
+        - dropIndex:
+            tableName: books
+            indexName: idx_book_reorder_level
