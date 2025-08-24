@@ -20,7 +20,7 @@ import java.util.Set;
 @SuperBuilder
 @EqualsAndHashCode(callSuper = true, onlyExplicitlyIncluded = true)
 @ToString(callSuper = true, exclude = "books")
-public class Genre extends BaseEntity {
+public class Genre extends BaseEntity implements NamedEntity {
     
     @NotBlank
     @Size(max = 100)

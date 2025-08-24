@@ -14,4 +14,4 @@ public record GenreDto(
     
     Instant createdAt,
     Instant updatedAt
-) {}
+) implements NamedDto {}

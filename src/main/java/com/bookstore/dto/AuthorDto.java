@@ -14,4 +14,4 @@ public record AuthorDto(
     
     Instant createdAt,
     Instant updatedAt
-) {}
+) implements NamedDto {}
