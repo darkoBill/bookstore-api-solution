@@ -2,10 +2,10 @@
 set -e
 
 BASE_URL="${BASE_URL:-http://localhost:8080}"
-ADMIN_USER="${ADMIN_USER:-admin}"
-ADMIN_PASS="${ADMIN_PASS:-admin123}"
-USER_USER="${USER_USER:-user}"
-USER_PASS="${USER_PASS:-user123}"
+ADMIN_USER="${ADMIN_USERNAME:-${ADMIN_USER:-admin}}"
+ADMIN_PASS="${ADMIN_PASSWORD:-${ADMIN_PASS:-admin123}}"
+USER_USER="${USER_USERNAME:-${USER_USER:-user}}"
+USER_PASS="${USER_PASSWORD:-${USER_PASS:-user123}}"
 
 ADMIN_AUTH="$ADMIN_USER:$ADMIN_PASS"
 USER_AUTH="$USER_USER:$USER_PASS"
@@ -43,15 +43,19 @@ wait_for_readiness() {
 test_create_book_as_admin() {
     echo "TEST: Create book as admin"
     
+    # Generate unique ISBN based on current timestamp to avoid conflicts
+    local timestamp=$(date +%s)
+    local unique_isbn="978-${timestamp:0:10}"
+    
     local response=$(curl -s -i -w "HTTPSTATUS:%{http_code}" \
         -u "$ADMIN_AUTH" \
         -X POST "$BASE_URL/api/books" \
         -H "Content-Type: application/json" \
         -d '{
-            "title": "Smoke Test Book",
+            "title": "Smoke Test Book '"$timestamp"'",
             "price": 24.99,
             "publishedYear": 2024,
-            "isbn": "978-9999999999",
+            "isbn": "'"$unique_isbn"'",
             "authors": [{"name": "Test Author"}],
             "genres": [{"name": "Test Genre"}]
         }')
@@ -72,9 +76,10 @@ test_create_book_as_admin() {
         exit 1
     fi
     
-    BOOK_ID=$(echo "$body" | grep -o '"id":"[^"]*"' | cut -d'"' -f4)
+    BOOK_ID=$(echo "$body" | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
     if [ -z "$BOOK_ID" ]; then
         echo "FAIL: No book ID returned"
+        echo "Body: $body"
         exit 1
     fi
     
@@ -98,8 +103,9 @@ test_create_book_as_user_forbidden() {
         exit 1
     fi
     
-    if ! echo "$body" | grep -q "application/problem+json"; then
+    if ! echo "$body" | grep -q '"type":' || ! echo "$body" | grep -q '"title":' || ! echo "$body" | grep -q '"status":403'; then
         echo "FAIL: Response not in RFC-7807 format"
+        echo "Response: $body"
         exit 1
     fi
     
@@ -349,8 +355,8 @@ test_validation_errors() {
         exit 1
     fi
     
-    # Check for specific field validation errors
-    if ! echo "$body" | grep -q '"title":' || ! echo "$body" | grep -q '"price":'; then
+    # Check for specific field validation errors in the new array format
+    if ! echo "$body" | grep -q '"field":"title"' || ! echo "$body" | grep -q '"field":"price"'; then
         echo "FAIL: Field-specific validation errors missing"
         echo "Response: $body"
         exit 1
