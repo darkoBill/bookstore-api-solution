@@ -1,7 +1,6 @@
 package com.bookstore.service;
 
 import com.bookstore.dto.InventoryAdjustmentDto;
-import com.bookstore.dto.InventoryReservationDto;
 import com.bookstore.dto.BookDto;
 
 import java.util.List;

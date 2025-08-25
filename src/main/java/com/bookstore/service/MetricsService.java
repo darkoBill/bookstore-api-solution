@@ -1,6 +1,7 @@
 package com.bookstore.service;
 
 import com.bookstore.dto.BookDto;
+import com.bookstore.service.InventoryService;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -16,14 +17,16 @@ public class MetricsService {
     
     private final MeterRegistry meterRegistry;
     private final BookService bookService;
+    private final InventoryService inventoryService;
     
     private final Counter bookCreatedCounter;
     private final Counter bookViewedCounter;
     private final Counter inventoryReservedCounter;
     
-    public MetricsService(MeterRegistry meterRegistry, BookService bookService) {
+    public MetricsService(MeterRegistry meterRegistry, BookService bookService, InventoryService inventoryService) {
         this.meterRegistry = meterRegistry;
         this.bookService = bookService;
+        this.inventoryService = inventoryService;
         
         // Initialize counters
         this.bookCreatedCounter = Counter.builder("books.created")
@@ -50,22 +53,30 @@ public class MetricsService {
         log.debug("Recorded book creation metric for genre: {}", genre);
     }
     
-    public void recordBookViewed(String bookId, String title) {
+    public void recordBookViewed(String genre) {
+        // Use low-cardinality tags to avoid metric explosion
         Counter.builder("books.viewed")
-            .tag("book_id", bookId)
-            .tag("title", title)
+            .tag("genre", genre != null ? genre : "unknown")
             .register(meterRegistry)
             .increment();
-        log.debug("Recorded book view metric for: {}", title);
+        log.debug("Recorded book view metric for genre: {}", genre);
     }
     
-    public void recordInventoryReserved(String bookId, int quantity) {
+    public void recordInventoryReserved(String quantityRange) {
+        // Use quantity ranges instead of exact values to reduce cardinality
         Counter.builder("inventory.reserved")
-            .tag("book_id", bookId)
-            .tag("quantity", String.valueOf(quantity))
+            .tag("quantity_range", quantityRange != null ? quantityRange : "unknown")
             .register(meterRegistry)
             .increment();
-        log.debug("Recorded inventory reservation metric: {} units for book {}", quantity, bookId);
+        log.debug("Recorded inventory reservation metric for quantity range: {}", quantityRange);
+    }
+    
+    public String getQuantityRange(int quantity) {
+        if (quantity <= 5) return "1-5";
+        if (quantity <= 10) return "6-10";
+        if (quantity <= 25) return "11-25";
+        if (quantity <= 50) return "26-50";
+        return "50+";
     }
     
     private void registerInventoryGauges() {
@@ -93,7 +104,7 @@ public class MetricsService {
     
     private double getRestockNeededCount() {
         try {
-            return 0; // Placeholder - would call inventory service
+            return inventoryService.getBooksNeedingRestock().size();
         } catch (Exception e) {
             log.warn("Failed to get restock count for metrics", e);
             return 0;

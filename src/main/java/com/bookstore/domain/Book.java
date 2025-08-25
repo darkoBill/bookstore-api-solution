@@ -2,6 +2,7 @@ package com.bookstore.domain;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
 import lombok.*;
@@ -35,6 +36,8 @@ public class Book extends BaseEntity {
     private Integer publishedYear;
     
     @Size(max = 20)
+    @Pattern(regexp = "^(?:ISBN[-\\s]?(?:1[03])?[-\\s]?)?(?:[0-9Xx][-\\s]?){9,12}[0-9Xx]$|^$", 
+             message = "ISBN must be a valid format (ISBN-10 or ISBN-13) or empty")
     @Column(length = 20)
     private String isbn;
     

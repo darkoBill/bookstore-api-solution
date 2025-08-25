@@ -23,8 +23,10 @@ import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.util.StringUtils;
 
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
@@ -52,6 +54,9 @@ public class JwtSecurityConfig {
     @Value("${USER_PASSWORD:user123}")
     private String userPassword;
 
+    @Value("${JWT_SIGNING_KEY:}")
+    private String jwtSigningKey;
+
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         return http
@@ -61,8 +66,6 @@ public class JwtSecurityConfig {
                 // Public endpoints
                 .requestMatchers(
                     "/api/auth/**",
-                    "/api/books/search",
-                    "/api/books/{id}",
                     "/swagger-ui/**",
                     "/v3/api-docs/**",
                     "/actuator/health",
@@ -70,12 +73,15 @@ public class JwtSecurityConfig {
                     "/actuator/metrics",
                     "/actuator/prometheus"
                 ).permitAll()
-                // Admin-only endpoints
-                .requestMatchers(
-                    "/api/books",
-                    "/api/inventory/**",
-                    "/actuator/**"
-                ).hasRole("ADMIN")
+                // Admin-only endpoints (POST, PUT, DELETE)
+                .requestMatchers("POST", "/api/books").hasRole("ADMIN")
+                .requestMatchers("PUT", "/api/books/**").hasRole("ADMIN")
+                .requestMatchers("DELETE", "/api/books/**").hasRole("ADMIN")
+                .requestMatchers("/api/inventory/**").hasRole("ADMIN")
+                .requestMatchers("/actuator/**").hasRole("ADMIN")
+                // User and Admin can read books
+                .requestMatchers("GET", "/api/books").hasAnyRole("USER", "ADMIN")
+                .requestMatchers("GET", "/api/books/**").hasAnyRole("USER", "ADMIN")
                 // Authenticated endpoints
                 .anyRequest().authenticated()
             )
@@ -111,10 +117,24 @@ public class JwtSecurityConfig {
 
     @Bean
     public KeyPair keyPair() {
+        if (StringUtils.hasText(jwtSigningKey)) {
+            // In production, use persistent key from environment
+            // For demo purposes, we'll still generate but log a warning
+            log.warn("JWT signing key provided via environment - using persistent key storage is recommended");
+            // TODO: Implement proper key loading from environment/external store
+        }
+        
         try {
+            // Generate RSA key pair
+            // In production: load from secure key store, environment, or external service
             KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance("RSA");
             keyPairGenerator.initialize(2048);
-            return keyPairGenerator.generateKeyPair();
+            KeyPair keyPair = keyPairGenerator.generateKeyPair();
+            
+            log.warn("JWT keys generated at runtime - tokens will be invalid after restart. " +
+                    "Use persistent key storage in production.");
+            
+            return keyPair;
         } catch (NoSuchAlgorithmException e) {
             throw new IllegalStateException("Unable to generate RSA key pair", e);
         }
@@ -127,7 +147,7 @@ public class JwtSecurityConfig {
         
         return new RSAKey.Builder(publicKey)
             .privateKey(privateKey)
-            .keyID(UUID.randomUUID().toString())
+            .keyID("bookstore-jwt-key-" + UUID.randomUUID().toString())
             .build();
     }
 
