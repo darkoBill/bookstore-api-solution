@@ -9,3 +9,5 @@ databaseChangeLog:
       file: db/changelog/004-demo-seed-data.yaml
   - include:
       file: db/changelog/005-add-inventory-fields.yaml
+  - include:
+      file: db/changelog/006-add-version-columns.yaml
