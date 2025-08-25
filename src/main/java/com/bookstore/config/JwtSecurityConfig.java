@@ -87,7 +87,7 @@ public class JwtSecurityConfig {
             )
             .oauth2ResourceServer(oauth2 -> oauth2
                 .jwt(jwt -> jwt
-                    .jwtAuthenticationConverter(new JwtAuthenticationConverter())
+                    .jwtAuthenticationConverter(jwtAuthenticationConverter())
                 )
             )
             .build();
@@ -167,5 +167,10 @@ public class JwtSecurityConfig {
     @Bean
     public JwtEncoder jwtEncoder(JWKSource<SecurityContext> jwkSource) {
         return new NimbusJwtEncoder(jwkSource);
+    }
+    
+    @Bean
+    public JwtAuthenticationConverter jwtAuthenticationConverter() {
+        return new JwtAuthenticationConverter();
     }
 }
