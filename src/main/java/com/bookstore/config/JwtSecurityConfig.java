@@ -14,6 +14,8 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -33,6 +35,8 @@ import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
+import java.util.Collection;
+import java.util.List;
 import java.util.UUID;
 
 @Configuration
@@ -170,7 +174,39 @@ public class JwtSecurityConfig {
     }
     
     @Bean
-    public JwtAuthenticationConverter jwtAuthenticationConverter() {
-        return new JwtAuthenticationConverter();
+    public org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter jwtAuthenticationConverter() {
+        org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter converter = 
+            new org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter();
+        
+        converter.setJwtGrantedAuthoritiesConverter(jwt -> {
+            // Extract roles from JWT claims
+            Collection<String> roles = null;
+            
+            if (jwt.hasClaim("roles")) {
+                try {
+                    roles = jwt.getClaimAsStringList("roles");
+                } catch (Exception e) {
+                    // If list fails, try as single string
+                    String roleString = jwt.getClaimAsString("roles");
+                    if (roleString != null && !roleString.trim().isEmpty()) {
+                        roles = List.of(roleString.split(","))
+                            .stream()
+                            .map(String::trim)
+                            .filter(s -> !s.isEmpty())
+                            .toList();
+                    }
+                }
+            }
+            
+            if (roles != null && !roles.isEmpty()) {
+                return roles.stream()
+                    .map(role -> (GrantedAuthority) new SimpleGrantedAuthority("ROLE_" + role))
+                    .toList();
+            }
+            
+            return List.of();
+        });
+        
+        return converter;
     }
 }
