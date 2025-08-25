@@ -6,6 +6,7 @@ import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
@@ -38,6 +39,18 @@ import java.util.UUID;
 @Slf4j
 @Profile("jwt")
 public class JwtSecurityConfig {
+
+    @Value("${ADMIN_USERNAME:admin}")
+    private String adminUsername;
+
+    @Value("${ADMIN_PASSWORD:admin123}")
+    private String adminPassword;
+
+    @Value("${USER_USERNAME:user}")
+    private String userUsername;
+
+    @Value("${USER_PASSWORD:user123}")
+    private String userPassword;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -77,14 +90,14 @@ public class JwtSecurityConfig {
     @Bean
     public UserDetailsService userDetailsService() {
         UserDetails admin = User.builder()
-            .username("admin")
-            .password(passwordEncoder().encode("admin123"))
+            .username(adminUsername)
+            .password(passwordEncoder().encode(adminPassword))
             .roles("ADMIN")
             .build();
 
         UserDetails user = User.builder()
-            .username("user")  
-            .password(passwordEncoder().encode("user123"))
+            .username(userUsername)  
+            .password(passwordEncoder().encode(userPassword))
             .roles("USER")
             .build();
 
