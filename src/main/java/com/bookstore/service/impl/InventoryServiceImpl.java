@@ -11,7 +11,6 @@ import com.bookstore.repository.BookRepository;
 import com.bookstore.service.InventoryService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,7 +24,6 @@ public class InventoryServiceImpl implements InventoryService {
     
     private final BookRepository bookRepository;
     private final BookMapper bookMapper;
-    private final ApplicationEventPublisher eventPublisher;
     
     @Override
     @Transactional
@@ -41,7 +39,6 @@ public class InventoryServiceImpl implements InventoryService {
         bookRepository.save(book);
         
         log.info("Reserved {} units for book {}", quantity, bookId);
-        // eventPublisher.publishEvent(new InventoryReservedEvent(bookId, quantity));
     }
     
     @Override
@@ -55,7 +52,6 @@ public class InventoryServiceImpl implements InventoryService {
         bookRepository.save(book);
         
         log.info("Released {} units reservation for book {}", quantity, bookId);
-        // eventPublisher.publishEvent(new InventoryReleasedEvent(bookId, quantity));
     }
     
     @Override
@@ -78,7 +74,6 @@ public class InventoryServiceImpl implements InventoryService {
         
         log.info("Adjusted inventory for book {} by {} units. Reason: {}", 
                 bookId, adjustment.quantityChange(), adjustment.reason());
-        // eventPublisher.publishEvent(new InventoryAdjustedEvent(adjustment));
     }
     
     @Override
