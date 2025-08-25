@@ -108,7 +108,4 @@ public class Book extends BaseEntity {
                .multiply(new BigDecimal("100"));
     }
     
-    public void incrementViewCount() {
-        this.viewCount++;
-    }
 }
