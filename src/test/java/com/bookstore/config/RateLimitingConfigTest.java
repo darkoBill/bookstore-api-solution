@@ -1,5 +1,6 @@
 package com.bookstore.config;
 
+import com.bookstore.exception.RateLimitExceededException;
 import io.github.bucket4j.Bandwidth;
 import io.github.bucket4j.Bucket;
 import io.github.bucket4j.Refill;
@@ -11,6 +12,7 @@ import org.springframework.web.servlet.HandlerInterceptor;
 import java.time.Duration;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class RateLimitingConfigTest {
 
@@ -35,7 +37,8 @@ class RateLimitingConfigTest {
 
         // Second request immediately should be rate limited
         MockHttpServletResponse response2 = new MockHttpServletResponse();
-        assertThat(interceptor.preHandle(request, response2, new Object())).isFalse();
+        assertThatThrownBy(() -> interceptor.preHandle(request, response2, new Object()))
+            .isInstanceOf(RateLimitExceededException.class);
 
         Bucket firstBucket = config.getCache().getIfPresent(clientIp);
 

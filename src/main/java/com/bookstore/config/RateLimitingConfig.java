@@ -1,5 +1,6 @@
 package com.bookstore.config;
 
+import com.bookstore.exception.RateLimitExceededException;
 import io.github.bucket4j.Bandwidth;
 import io.github.bucket4j.Bucket;
 import io.github.bucket4j.Refill;
@@ -61,11 +62,9 @@ public class RateLimitingConfig implements WebMvcConfigurer {
                 response.addHeader("X-Rate-Limit-Remaining", String.valueOf(bucket.getAvailableTokens()));
                 return true;
             } else {
-                response.setStatus(429); // Too Many Requests
                 response.addHeader("X-Rate-Limit-Retry-After", "60");
-                response.getWriter().write("{\"error\":\"Rate limit exceeded. Try again later.\"}");
                 log.warn("Rate limit exceeded for IP: {}", clientIP);
-                return false;
+                throw new RateLimitExceededException(clientIP, 60);
             }
         }
         

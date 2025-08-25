@@ -235,6 +235,27 @@ public class GlobalExceptionHandler {
             .body(problem);
     }
     
+    @ExceptionHandler(RateLimitExceededException.class)
+    public ResponseEntity<ProblemDetail> handleRateLimitExceeded(
+            RateLimitExceededException ex, WebRequest request) {
+        
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+            HttpStatus.TOO_MANY_REQUESTS, ex.getMessage());
+        problem.setType(URI.create(PROBLEM_BASE_URL + "/rate-limit-exceeded"));
+        problem.setTitle("Rate Limit Exceeded");
+        problem.setProperty("timestamp", Instant.now());
+        problem.setProperty("clientIp", ex.getClientIp());
+        problem.setProperty("retryAfterSeconds", ex.getRetryAfterSeconds());
+        
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("X-Rate-Limit-Retry-After", String.valueOf(ex.getRetryAfterSeconds()));
+        
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+            .headers(headers)
+            .contentType(MediaType.APPLICATION_PROBLEM_JSON)
+            .body(problem);
+    }
+    
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ProblemDetail> handleGenericException(
             Exception ex, WebRequest request) {
