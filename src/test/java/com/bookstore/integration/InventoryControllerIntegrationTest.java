@@ -9,17 +9,20 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.test.context.ActiveProfiles;
 
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 
 import static org.hamcrest.Matchers.containsString;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @Transactional
+@ActiveProfiles("basic")
 class InventoryControllerIntegrationTest extends BaseIntegrationTest {
 
     @Autowired
@@ -50,6 +53,7 @@ class InventoryControllerIntegrationTest extends BaseIntegrationTest {
 
         mockMvc.perform(post("/api/inventory/{bookId}/adjust", book.getId())
                 .with(httpBasic("admin", "admin123"))
+                .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(adjustment)))
             .andExpect(status().isBadRequest())
@@ -77,6 +81,7 @@ class InventoryControllerIntegrationTest extends BaseIntegrationTest {
 
         mockMvc.perform(post("/api/inventory/bulk-adjust")
                 .with(httpBasic("admin", "admin123"))
+                .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(List.of(adjustment))))
             .andExpect(status().isBadRequest())

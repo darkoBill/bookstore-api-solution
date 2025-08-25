@@ -5,10 +5,13 @@ import com.bookstore.dto.BookDto;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
+import org.mapstruct.NullValuePropertyMappingStrategy;
 
 import java.util.List;
 
-@Mapper(componentModel = "spring", uses = {AuthorMapper.class, GenreMapper.class})
+@Mapper(componentModel = "spring", 
+        uses = {AuthorMapper.class, GenreMapper.class},
+        nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
 public interface BookMapper {
     
     BookDto toDto(Book book);
@@ -20,6 +23,9 @@ public interface BookMapper {
     @Mapping(target = "updatedAt", ignore = true)
     @Mapping(target = "authors", ignore = true)
     @Mapping(target = "genres", ignore = true)
+    @Mapping(target = "viewCount", defaultValue = "0L")
+    @Mapping(target = "reservedQuantity", defaultValue = "0")
+    @Mapping(target = "reorderLevel", defaultValue = "5")
     Book toEntity(BookDto dto);
     
     @Mapping(target = "id", ignore = true)

@@ -13,6 +13,7 @@ import org.springframework.security.oauth2.jwt.JwtClaimsSet;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
 import org.springframework.stereotype.Service;
+import org.springframework.context.annotation.Profile;
 
 import java.time.Instant;
 import java.util.List;
@@ -20,6 +21,7 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@Profile("jwt")
 public class AuthServiceImpl implements AuthService {
     
     private final UserDetailsService userDetailsService;

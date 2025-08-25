@@ -27,7 +27,7 @@ wait_for_readiness() {
     local attempt=1
     
     while [ $attempt -le $max_attempts ]; do
-        if curl -s -f "$BASE_URL/actuator/health/readiness" > /dev/null 2>&1; then
+        if curl -s -f "$BASE_URL/actuator/health" > /dev/null 2>&1; then
             echo "API is ready!"
             return 0
         fi
@@ -43,21 +43,26 @@ wait_for_readiness() {
 test_create_book_as_admin() {
     echo "TEST: Create book as admin"
     
-    # Generate unique ISBN based on current timestamp to avoid conflicts
-    local timestamp=$(date +%s)
-    local unique_isbn="978-${timestamp:0:10}"
+    # Generate unique ISBN based on current timestamp with nanoseconds to avoid conflicts
+    local timestamp=$(date +%s%N)
+    local unique_isbn="978-${timestamp:0:13}"
     
     local response=$(curl -s -i -w "HTTPSTATUS:%{http_code}" \
         -u "$ADMIN_AUTH" \
         -X POST "$BASE_URL/api/books" \
         -H "Content-Type: application/json" \
         -d '{
-            "title": "Smoke Test Book '"$timestamp"'",
+            "title": "Smoke Test Book '"${timestamp:0:10}"'",
             "price": 24.99,
             "publishedYear": 2024,
             "isbn": "'"$unique_isbn"'",
             "authors": [{"name": "Test Author"}],
-            "genres": [{"name": "Test Genre"}]
+            "genres": [{"name": "Test Genre"}],
+            "quantityInStock": 50,
+            "reservedQuantity": 0,
+            "costPrice": 18.99,
+            "supplierInfo": "Test Supplier",
+            "reorderLevel": 10
         }')
     
     local http_code=$(echo "$response" | grep -o "HTTPSTATUS:[0-9]*" | cut -d: -f2)
@@ -214,6 +219,12 @@ test_duplicate_author_genre() {
         -d "{
             \"title\": \"First Book with Author\",
             \"price\": 15.99,
+            \"publishedYear\": 2024,
+            \"quantityInStock\": 20,
+            \"reservedQuantity\": 0,
+            \"costPrice\": 10.99,
+            \"supplierInfo\": \"Test Supplier\",
+            \"reorderLevel\": 5,
             \"authors\": [{\"name\": \"$unique_author\"}],
             \"genres\": [{\"name\": \"Unique Genre\"}]
         }")
@@ -232,6 +243,12 @@ test_duplicate_author_genre() {
         -d "{
             \"title\": \"Second Book with Same Author\",
             \"price\": 25.99,
+            \"publishedYear\": 2024,
+            \"quantityInStock\": 15,
+            \"reservedQuantity\": 0,
+            \"costPrice\": 18.99,
+            \"supplierInfo\": \"Test Supplier\",
+            \"reorderLevel\": 5,
             \"authors\": [{\"name\": \"$(echo "$unique_author" | tr '[:lower:]' '[:upper:]')\"}],
             \"genres\": [{\"name\": \"Another Genre\"}]
         }")

@@ -55,6 +55,13 @@ class BookControllerIntegrationTest extends BaseIntegrationTest {
             "978-1234567890",
             Set.of(author),
             Set.of(genre),
+            100,
+            0,
+            new BigDecimal("19.99"),
+            "Test Supplier",
+            10,
+            0L,
+            null,
             null,
             null
         );
@@ -100,6 +107,13 @@ class BookControllerIntegrationTest extends BaseIntegrationTest {
             1000, // Invalid: year too early
             null,
             null,
+            null,
+            100,
+            0,
+            new BigDecimal("19.99"),
+            "Test Supplier",
+            10,
+            0L,
             null,
             null,
             null
@@ -152,8 +166,15 @@ class BookControllerIntegrationTest extends BaseIntegrationTest {
             "978-0987654321",
             created.authors(),
             created.genres(),
-            null,
-            null
+            150,
+            5,
+            new BigDecimal("29.99"),
+            "Updated Supplier",
+            15,
+            created.viewCount(),
+            created.version(),
+            created.createdAt(),
+            created.updatedAt()
         );
         
         mockMvc.perform(put("/api/books/{id}", created.id())
@@ -177,6 +198,13 @@ class BookControllerIntegrationTest extends BaseIntegrationTest {
             2024,
             null,
             null,
+            null,
+            100,
+            0,
+            new BigDecimal("29.99"),
+            "Test Supplier",
+            10,
+            0L,
             null,
             null,
             null

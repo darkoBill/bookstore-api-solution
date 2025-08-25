@@ -110,8 +110,8 @@ public class BookServiceImpl implements BookService {
     @Override
     @Transactional
     public void deleteBook(UUID id) {
-        long deletedCount = bookRepository.deleteBookById(id);
-        if (deletedCount > 0) {
+        if (bookRepository.existsById(id)) {
+            bookRepository.deleteById(id);
             log.debug("Deleted book with id: {}", id);
         }
     }

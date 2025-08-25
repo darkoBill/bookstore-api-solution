@@ -107,6 +107,13 @@ class BookMapperTest {
             "1234567890",
             Set.of(authorDto),
             Set.of(genreDto),
+            100,
+            0,
+            new BigDecimal("15.99"),
+            "Test Supplier",
+            10,
+            0L,
+            null,
             now,
             now
         );

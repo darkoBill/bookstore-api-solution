@@ -18,5 +18,6 @@ public interface AuthorMapper {
     @Mapping(target = "books", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
+    @Mapping(target = "version", ignore = true)
     Author toEntity(AuthorDto dto);
 }
