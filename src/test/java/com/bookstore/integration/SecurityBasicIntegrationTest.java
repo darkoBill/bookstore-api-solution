@@ -2,16 +2,25 @@ package com.bookstore.integration;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-class SecurityIntegrationTest extends BaseIntegrationTest {
+@ActiveProfiles("basic")
+class SecurityBasicIntegrationTest extends BaseIntegrationTest {
     
     @Autowired
     private MockMvc mockMvc;
+
+    @Autowired
+    private List<SecurityFilterChain> securityFilterChains;
     
     @Test
     void accessProtectedEndpoint_WithValidAdminCredentials_ShouldReturn200() throws Exception {
@@ -50,5 +59,10 @@ class SecurityIntegrationTest extends BaseIntegrationTest {
     void accessSwaggerUI_WithoutCredentials_ShouldReturn200() throws Exception {
         mockMvc.perform(get("/v3/api-docs"))
             .andExpect(status().isOk());
+    }
+
+    @Test
+    void shouldOnlyHaveOneSecurityFilterChain() {
+        assertEquals(1, securityFilterChains.size(), "Only one SecurityFilterChain should be active");
     }
 }

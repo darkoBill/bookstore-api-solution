@@ -44,9 +44,12 @@ Many-to-many relationships between Books, Authors, and Genres via join tables. T
 ## Security Model
 
 ### Authentication & Authorization
-- **HTTP Basic Auth**: Industry standard, simple to implement and test (assumes TLS in production)
+- **Security Profiles**:
+  - `basic`: HTTP Basic authentication with environment-configurable users
+  - `jwt`: JWT-based authentication with a login endpoint and Bearer tokens
+  Activate one by setting `spring.profiles.active` (e.g., `--spring.profiles.active=local,basic`). Only one security profile should be active at a time.
 - **Environment-Configurable Users**: Credentials sourced from environment variables
-- **Role-Based Access Control**: 
+- **Role-Based Access Control**:
   - `ADMIN`: Full CRUD operations on all resources
   - `USER`: Read and search operations only
 
@@ -78,6 +81,7 @@ export ADMIN_USERNAME=admin
 export ADMIN_PASSWORD=admin123
 export USER_USERNAME=user
 export USER_PASSWORD=user123
+export SPRING_PROFILES_ACTIVE=jwt # or "basic"
 
 # Start everything with Docker Compose
 docker compose up --build
@@ -97,6 +101,8 @@ $env:ADMIN_USERNAME="admin"
 $env:ADMIN_PASSWORD="admin123"
 $env:USER_USERNAME="user"
 $env:USER_PASSWORD="user123"
+$env:SPRING_PROFILES_ACTIVE="local,basic" # or "local,jwt"
+$env:SPRING_PROFILES_ACTIVE="jwt" # or "basic"
 
 # Start everything with Docker Compose
 docker compose up --build
@@ -118,12 +124,13 @@ export ADMIN_USERNAME=admin
 export ADMIN_PASSWORD=admin123
 export USER_USERNAME=user
 export USER_PASSWORD=user123
+export SPRING_PROFILES_ACTIVE=local,basic # or local,jwt
 
 # Run application locally using convenience script
 ./scripts/run-local.sh
 
 # Or manually with Gradle
-./gradlew bootRun --args='--spring.profiles.active=local'
+./gradlew bootRun --args='--spring.profiles.active=local,basic'
 
 # Stop database when done
 ./scripts/stop-local.sh
@@ -141,12 +148,13 @@ $env:ADMIN_USERNAME="admin"
 $env:ADMIN_PASSWORD="admin123"
 $env:USER_USERNAME="user"
 $env:USER_PASSWORD="user123"
+$env:SPRING_PROFILES_ACTIVE="local,basic" # or "local,jwt"
 
 # Run application locally using convenience script
 .\scripts\run-local.ps1
 
 # Or manually with Gradle
-.\gradlew.bat bootRun --args="--spring.profiles.active=local"
+.\gradlew.bat bootRun --args="--spring.profiles.active=local,basic"
 
 # Stop database when done
 docker compose -f docker-compose.dev.yml down
@@ -194,7 +202,10 @@ docker compose -f docker-compose.dev.yml down
 - **Health Check**: `/actuator/health`
 
 ### Authentication
-The API uses JWT (JSON Web Token) authentication with RSA-256 signing:
+Depending on the active security profile:
+
+- `basic`: send credentials using the `Authorization: Basic` header
+- `jwt`: use JWT (JSON Web Token) authentication with RSA-256 signing:
 
 ```bash
 # 1. Obtain JWT token via login

@@ -36,7 +36,7 @@ import java.util.UUID;
 @EnableWebSecurity
 @EnableMethodSecurity(prePostEnabled = true)
 @Slf4j
-@Profile("!test")
+@Profile("jwt")
 public class JwtSecurityConfig {
 
     @Bean

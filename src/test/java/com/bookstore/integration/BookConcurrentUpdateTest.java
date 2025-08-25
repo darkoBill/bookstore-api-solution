@@ -4,6 +4,7 @@ import com.bookstore.dto.BookDto;
 import com.bookstore.service.BookService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.test.context.ActiveProfiles;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -18,6 +19,7 @@ import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+@ActiveProfiles("basic")
 class BookConcurrentUpdateTest extends BaseIntegrationTest {
 
     @Autowired

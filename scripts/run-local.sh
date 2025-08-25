@@ -42,4 +42,4 @@ echo ""
 echo "Press Ctrl+C to stop the application"
 echo ""
 
-./gradlew bootRun --args='--spring.profiles.active=local'
+./gradlew bootRun --args='--spring.profiles.active=local,basic'

@@ -88,6 +88,24 @@ public class GlobalExceptionHandler {
             .contentType(MediaType.APPLICATION_PROBLEM_JSON)
             .body(problem);
     }
+
+    @ExceptionHandler(InvalidInventoryAdjustmentException.class)
+    public ResponseEntity<ProblemDetail> handleInvalidInventoryAdjustment(
+            InvalidInventoryAdjustmentException ex, WebRequest request) {
+
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+            HttpStatus.BAD_REQUEST, ex.getMessage());
+        problem.setType(URI.create(PROBLEM_BASE_URL + "/invalid-inventory-adjustment"));
+        problem.setTitle("Invalid Inventory Adjustment");
+        problem.setProperty("timestamp", Instant.now());
+        problem.setProperty("bookId", ex.getBookId());
+        problem.setProperty("currentQuantity", ex.getCurrentQuantity());
+        problem.setProperty("adjustment", ex.getAdjustment());
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+            .contentType(MediaType.APPLICATION_PROBLEM_JSON)
+            .body(problem);
+    }
     
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ProblemDetail> handleValidationExceptions(

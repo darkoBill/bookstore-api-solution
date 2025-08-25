@@ -1,0 +1,199 @@
+From 2fa5b024e25a87af5233d13cba6dfce13384bf95 Mon Sep 17 00:00:00 2001
+From: Darko <43810203+darkoBill@users.noreply.github.com>
+Date: Sun, 24 Aug 2025 19:52:43 +0200
+Subject: [PATCH] Add invalid inventory adjustment exception and handler
+
+---
+ .../exception/GlobalExceptionHandler.java     | 18 ++++
+ .../InvalidInventoryAdjustmentException.java  | 29 +++++++
+ .../service/impl/InventoryServiceImpl.java    |  7 +-
+ .../InventoryControllerIntegrationTest.java   | 87 +++++++++++++++++++
+ 4 files changed, 140 insertions(+), 1 deletion(-)
+ create mode 100644 src/main/java/com/bookstore/exception/InvalidInventoryAdjustmentException.java
+ create mode 100644 src/test/java/com/bookstore/integration/InventoryControllerIntegrationTest.java
+
+diff --git a/src/main/java/com/bookstore/exception/GlobalExceptionHandler.java b/src/main/java/com/bookstore/exception/GlobalExceptionHandler.java
+index 12ef990..e208e02 100644
+--- a/src/main/java/com/bookstore/exception/GlobalExceptionHandler.java
++++ b/src/main/java/com/bookstore/exception/GlobalExceptionHandler.java
+@@ -88,6 +88,24 @@ public class GlobalExceptionHandler {
+             .contentType(MediaType.APPLICATION_PROBLEM_JSON)
+             .body(problem);
+     }
++
++    @ExceptionHandler(InvalidInventoryAdjustmentException.class)
++    public ResponseEntity<ProblemDetail> handleInvalidInventoryAdjustment(
++            InvalidInventoryAdjustmentException ex, WebRequest request) {
++
++        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
++            HttpStatus.BAD_REQUEST, ex.getMessage());
++        problem.setType(URI.create(PROBLEM_BASE_URL + "/invalid-inventory-adjustment"));
++        problem.setTitle("Invalid Inventory Adjustment");
++        problem.setProperty("timestamp", Instant.now());
++        problem.setProperty("bookId", ex.getBookId());
++        problem.setProperty("currentQuantity", ex.getCurrentQuantity());
++        problem.setProperty("adjustment", ex.getAdjustment());
++
++        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
++            .contentType(MediaType.APPLICATION_PROBLEM_JSON)
++            .body(problem);
++    }
+     
+     @ExceptionHandler(MethodArgumentNotValidException.class)
+     public ResponseEntity<ProblemDetail> handleValidationExceptions(
+diff --git a/src/main/java/com/bookstore/exception/InvalidInventoryAdjustmentException.java b/src/main/java/com/bookstore/exception/InvalidInventoryAdjustmentException.java
+new file mode 100644
+index 0000000..983ef26
+--- /dev/null
++++ b/src/main/java/com/bookstore/exception/InvalidInventoryAdjustmentException.java
+@@ -0,0 +1,29 @@
++package com.bookstore.exception;
++
++import java.util.UUID;
++
++public class InvalidInventoryAdjustmentException extends RuntimeException {
++
++    private final UUID bookId;
++    private final int currentQuantity;
++    private final int adjustment;
++
++    public InvalidInventoryAdjustmentException(UUID bookId, int currentQuantity, int adjustment) {
++        super(String.format("Inventory adjustment would result in negative stock for book %s", bookId));
++        this.bookId = bookId;
++        this.currentQuantity = currentQuantity;
++        this.adjustment = adjustment;
++    }
++
++    public UUID getBookId() {
++        return bookId;
++    }
++
++    public int getCurrentQuantity() {
++        return currentQuantity;
++    }
++
++    public int getAdjustment() {
++        return adjustment;
++    }
++}
+diff --git a/src/main/java/com/bookstore/service/impl/InventoryServiceImpl.java b/src/main/java/com/bookstore/service/impl/InventoryServiceImpl.java
+index 2e1baf8..3788941 100644
+--- a/src/main/java/com/bookstore/service/impl/InventoryServiceImpl.java
++++ b/src/main/java/com/bookstore/service/impl/InventoryServiceImpl.java
+@@ -4,6 +4,7 @@ import com.bookstore.domain.Book;
+ import com.bookstore.dto.BookDto;
+ import com.bookstore.dto.InventoryAdjustmentDto;
+ import com.bookstore.exception.InsufficientInventoryException;
++import com.bookstore.exception.InvalidInventoryAdjustmentException;
+ import com.bookstore.exception.ResourceNotFoundException;
+ import com.bookstore.mapper.BookMapper;
+ import com.bookstore.repository.BookRepository;
+@@ -65,7 +66,11 @@ public class InventoryServiceImpl implements InventoryService {
+             
+         int newQuantity = book.getQuantityInStock() + adjustment.quantityChange();
+         if (newQuantity < 0) {
+-            throw new IllegalArgumentException("Inventory adjustment would result in negative stock");
++            throw new InvalidInventoryAdjustmentException(
++                bookId,
++                book.getQuantityInStock(),
++                adjustment.quantityChange()
++            );
+         }
+         
+         book.setQuantityInStock(newQuantity);
+diff --git a/src/test/java/com/bookstore/integration/InventoryControllerIntegrationTest.java b/src/test/java/com/bookstore/integration/InventoryControllerIntegrationTest.java
+new file mode 100644
+index 0000000..3f757a4
+--- /dev/null
++++ b/src/test/java/com/bookstore/integration/InventoryControllerIntegrationTest.java
+@@ -0,0 +1,87 @@
++package com.bookstore.integration;
++
++import com.bookstore.domain.Book;
++import com.bookstore.dto.InventoryAdjustmentDto;
++import com.bookstore.repository.BookRepository;
++import com.fasterxml.jackson.databind.ObjectMapper;
++import org.junit.jupiter.api.Test;
++import org.springframework.beans.factory.annotation.Autowired;
++import org.springframework.http.MediaType;
++import org.springframework.test.web.servlet.MockMvc;
++import org.springframework.transaction.annotation.Transactional;
++
++import java.math.BigDecimal;
++import java.time.Instant;
++import java.util.List;
++
++import static org.hamcrest.Matchers.containsString;
++import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
++import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
++import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
++
++@Transactional
++class InventoryControllerIntegrationTest extends BaseIntegrationTest {
++
++    @Autowired
++    private MockMvc mockMvc;
++
++    @Autowired
++    private ObjectMapper objectMapper;
++
++    @Autowired
++    private BookRepository bookRepository;
++
++    @Test
++    void adjustInventory_NegativeAdjustment_ShouldReturn400() throws Exception {
++        Book book = Book.builder()
++                .title("Test Book")
++                .price(new BigDecimal("9.99"))
++                .quantityInStock(5)
++                .build();
++        book = bookRepository.save(book);
++
++        InventoryAdjustmentDto adjustment = new InventoryAdjustmentDto(
++                book.getId(),
++                -10,
++                InventoryAdjustmentDto.AdjustmentType.MANUAL_ADJUSTMENT,
++                "Damaged",
++                Instant.now()
++        );
++
++        mockMvc.perform(post("/api/inventory/{bookId}/adjust", book.getId())
++                .with(httpBasic("admin", "admin123"))
++                .contentType(MediaType.APPLICATION_JSON)
++                .content(objectMapper.writeValueAsString(adjustment)))
++            .andExpect(status().isBadRequest())
++            .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
++            .andExpect(jsonPath("$.type").value(containsString("invalid-inventory-adjustment")))
++            .andExpect(jsonPath("$.title").value("Invalid Inventory Adjustment"));
++    }
++
++    @Test
++    void bulkInventoryUpdate_NegativeAdjustment_ShouldReturn400() throws Exception {
++        Book book = Book.builder()
++                .title("Bulk Book")
++                .price(new BigDecimal("9.99"))
++                .quantityInStock(5)
++                .build();
++        book = bookRepository.save(book);
++
++        InventoryAdjustmentDto adjustment = new InventoryAdjustmentDto(
++                book.getId(),
++                -10,
++                InventoryAdjustmentDto.AdjustmentType.MANUAL_ADJUSTMENT,
++                "Damaged",
++                Instant.now()
++        );
++
++        mockMvc.perform(post("/api/inventory/bulk-adjust")
++                .with(httpBasic("admin", "admin123"))
++                .contentType(MediaType.APPLICATION_JSON)
++                .content(objectMapper.writeValueAsString(List.of(adjustment))))
++            .andExpect(status().isBadRequest())
++            .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
++            .andExpect(jsonPath("$.type").value(containsString("invalid-inventory-adjustment")))
++            .andExpect(jsonPath("$.title").value("Invalid Inventory Adjustment"));
++    }
++}
+-- 
+2.43.0
+

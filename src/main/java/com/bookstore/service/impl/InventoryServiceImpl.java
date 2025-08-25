@@ -4,6 +4,7 @@ import com.bookstore.domain.Book;
 import com.bookstore.dto.BookDto;
 import com.bookstore.dto.InventoryAdjustmentDto;
 import com.bookstore.exception.InsufficientInventoryException;
+import com.bookstore.exception.InvalidInventoryAdjustmentException;
 import com.bookstore.exception.ResourceNotFoundException;
 import com.bookstore.mapper.BookMapper;
 import com.bookstore.repository.BookRepository;
@@ -65,7 +66,11 @@ public class InventoryServiceImpl implements InventoryService {
             
         int newQuantity = book.getQuantityInStock() + adjustment.quantityChange();
         if (newQuantity < 0) {
-            throw new IllegalArgumentException("Inventory adjustment would result in negative stock");
+            throw new InvalidInventoryAdjustmentException(
+                bookId,
+                book.getQuantityInStock(),
+                adjustment.quantityChange()
+            );
         }
         
         book.setQuantityInStock(newQuantity);

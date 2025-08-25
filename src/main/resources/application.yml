@@ -80,6 +80,11 @@ springdoc:
     path: /swagger-ui.html
     enabled: ${SWAGGER_ENABLED:true}
 
+rate-limit:
+  cache:
+    ttl: PT1M
+    max-size: 10000
+
 app:
   security:
     admin:

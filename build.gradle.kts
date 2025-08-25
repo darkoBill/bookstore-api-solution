@@ -33,8 +33,9 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-actuator")
     implementation("org.springframework.boot:spring-boot-starter-cache")
     implementation("org.springframework.boot:spring-boot-starter-aop")
-    
+
     implementation("com.github.vladimir-bukhtoyarov:bucket4j-core:7.6.0")
+    implementation("com.github.ben-manes.caffeine:caffeine:3.1.8")
     implementation("io.micrometer:micrometer-registry-prometheus")
     
     implementation("org.postgresql:postgresql:42.7.3")

@@ -41,4 +41,4 @@ Write-Host ""
 Write-Host "Press Ctrl+C to stop the application"
 Write-Host ""
 
-./gradlew.bat bootRun --args='--spring.profiles.active=local'
+./gradlew.bat bootRun --args='--spring.profiles.active=local,basic'
